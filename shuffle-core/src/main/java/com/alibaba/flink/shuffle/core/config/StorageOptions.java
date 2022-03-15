@@ -71,6 +71,13 @@ public class StorageOptions {
                                     + "/,/dir3/'. This option must be configured and the configured"
                                     + " directories must exist.");
 
+    /** Whether to create the configured data directory if it does not exist. */
+    public static final ConfigOption<Boolean> STORAGE_CREATE_NONEXISTENT_DATA_DIRS =
+            new ConfigOption<Boolean>("remote-shuffle.storage.create-nonexistent-data-dir")
+                    .defaultValue(true)
+                    .description(
+                            "Whether to create the configured data directory if it does not exist.");
+
     /**
      * Preferred disk type to use for data storage. The valid types include 'SSD' and 'HDD'. If
      * there are disks of the preferred type, only those disks will be used. However, this is not a
