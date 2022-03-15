@@ -245,7 +245,11 @@ public class ShuffleWorkerRunner implements FatalErrorHandler, AutoCloseable {
         }
 
         List<String> allPaths =
-                StorageConfigParseUtils.parseStoragePaths(directories).getAllPaths();
+                StorageConfigParseUtils.parseLocalStoragePaths(
+                                directories,
+                                configuration.getBoolean(
+                                        StorageOptions.STORAGE_CREATE_NONEXISTENT_DATA_DIRS))
+                        .getAllPaths();
         LocalShuffleMetaStore fileSystemShuffleMetaStore =
                 new LocalShuffleMetaStore(new HashSet<>(allPaths));
 

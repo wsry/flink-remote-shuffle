@@ -90,7 +90,10 @@ public class LocalFileMapPartitionFactory implements DataPartitionFactory {
         }
 
         StorageConfigParseUtils.ParsedPathLists parsedPathLists =
-                StorageConfigParseUtils.parseStoragePaths(directories);
+                StorageConfigParseUtils.parseLocalStoragePaths(
+                        directories,
+                        configuration.getBoolean(
+                                StorageOptions.STORAGE_CREATE_NONEXISTENT_DATA_DIRS));
         if (parsedPathLists.getAllPaths().isEmpty()) {
             throw new ConfigurationException(
                     String.format(

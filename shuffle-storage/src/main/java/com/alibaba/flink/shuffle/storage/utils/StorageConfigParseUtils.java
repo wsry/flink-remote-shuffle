@@ -63,12 +63,9 @@ public class StorageConfigParseUtils {
         }
     }
 
-    /**
-     * Parses the base paths configured by {@link StorageOptions#STORAGE_LOCAL_DATA_DIRS}
-     *
-     * <p>TODO: Will be replaced with a formal configuration object in the future.
-     */
-    public static ParsedPathLists parseStoragePaths(String directories) {
+    /** Parses the base paths configured by {@link StorageOptions#STORAGE_LOCAL_DATA_DIRS}. */
+    public static ParsedPathLists parseLocalStoragePaths(
+            String directories, boolean createIfNotExist) {
         List<String> ssdPaths = new ArrayList<>();
         List<String> hddPaths = new ArrayList<>();
         List<String> allPaths = new ArrayList<>();
@@ -95,12 +92,30 @@ public class StorageConfigParseUtils {
             }
             allPaths.add(pathString);
 
+            if (!pathString.startsWith("/") && !pathString.startsWith("file:/")) {
+                throw new ConfigurationException(
+                        String.format(
+                                "Can not support relative path '%s' configured by '%s', please use"
+                                        + " absolute path.",
+                                pathString, StorageOptions.STORAGE_LOCAL_DATA_DIRS.key()));
+            }
+
             Path path = new File(pathString).toPath();
-            if (!Files.exists(path)) {
+            boolean directoryExist = Files.exists(path);
+            if (!directoryExist && !createIfNotExist) {
                 throw new ConfigurationException(
                         String.format(
                                 "The data dir '%s' configured by '%s' does not exist.",
                                 pathString, StorageOptions.STORAGE_LOCAL_DATA_DIRS.key()));
+            } else if (!directoryExist) {
+                try {
+                    Files.createDirectories(path);
+                } catch (Exception exception) {
+                    throw new RuntimeException(
+                            String.format(
+                                    "Failed to create nonexistent data directory %s.", pathString),
+                            exception);
+                }
             }
 
             if (!Files.isDirectory(path)) {

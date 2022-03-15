@@ -30,6 +30,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -64,9 +65,37 @@ public class LocalFileMapPartitionFactoryTest {
     @Test(expected = ConfigurationException.class)
     public void testConfiguredDataDirNotExists() {
         LocalFileMapPartitionFactory partitionFactory = new LocalFileMapPartitionFactory();
-        Properties properties = new Properties();
-        properties.setProperty(StorageOptions.STORAGE_LOCAL_DATA_DIRS.key(), "Illegal");
-        partitionFactory.initialize(new Configuration(properties));
+        Configuration configuration = new Configuration();
+        configuration.setString(
+                StorageOptions.STORAGE_LOCAL_DATA_DIRS,
+                temporaryFolder1.getRoot().getAbsolutePath() + "/NonexistentDir");
+        configuration.setBoolean(StorageOptions.STORAGE_CREATE_NONEXISTENT_DATA_DIRS, false);
+        partitionFactory.initialize(configuration);
+    }
+
+    @Test
+    public void testCreateNonExistentDataDir() {
+        LocalFileMapPartitionFactory partitionFactory = new LocalFileMapPartitionFactory();
+        Configuration configuration = new Configuration();
+        configuration.setString(
+                StorageOptions.STORAGE_LOCAL_DATA_DIRS,
+                temporaryFolder1.getRoot().getAbsolutePath() + "/NonexistentDir");
+        partitionFactory.initialize(configuration);
+    }
+
+    @Test(expected = ConfigurationException.class)
+    public void testConfiguredRelativeDataDir() {
+        LocalFileMapPartitionFactory partitionFactory = new LocalFileMapPartitionFactory();
+        Configuration configuration = new Configuration();
+        String currentDirectory = new File(".").getAbsolutePath();
+        configuration.setString(
+                StorageOptions.STORAGE_LOCAL_DATA_DIRS,
+                temporaryFolder1
+                        .getRoot()
+                        .toPath()
+                        .relativize(new File(currentDirectory).toPath())
+                        .toString());
+        partitionFactory.initialize(configuration);
     }
 
     @Test(expected = ConfigurationException.class)
