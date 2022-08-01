@@ -21,8 +21,9 @@ import com.alibaba.flink.shuffle.kubernetes.operator.controller.RemoteShuffleApp
 import com.alibaba.flink.shuffle.kubernetes.operator.crd.RemoteShuffleApplication;
 import com.alibaba.flink.shuffle.kubernetes.operator.util.Constants;
 
-import io.fabric8.kubernetes.api.model.apiextensions.v1beta1.CustomResourceDefinition;
-import io.fabric8.kubernetes.api.model.apiextensions.v1beta1.CustomResourceDefinitionBuilder;
+import io.fabric8.kubernetes.api.model.apiextensions.v1.CustomResourceDefinition;
+import io.fabric8.kubernetes.api.model.apiextensions.v1.CustomResourceDefinitionBuilder;
+import io.fabric8.kubernetes.api.model.apiextensions.v1.JSONSchemaPropsBuilder;
 import io.fabric8.kubernetes.client.Config;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClient;
@@ -78,7 +79,7 @@ public class RemoteShuffleApplicationOperatorEntrypoint {
             // create CRD for the flink remote shuffle service.
             kubeClient
                     .apiextensions()
-                    .v1beta1()
+                    .v1()
                     .customResourceDefinitions()
                     .createOrReplace(shuffleApplicationCRD);
 
@@ -101,29 +102,44 @@ public class RemoteShuffleApplicationOperatorEntrypoint {
     static CustomResourceDefinition createRemoteShuffleApplicationCRD() {
         // create CRD builder from context.
         CustomResourceDefinitionBuilder customCRDBuilder =
-                CustomResourceDefinitionContext.v1beta1CRDFromCustomResourceType(
+                CustomResourceDefinitionContext.v1CRDFromCustomResourceType(
                         RemoteShuffleApplication.class);
 
         // setup additional print columns.
         ADDITIONAL_COLUMN.forEach(
-                column -> {
-                    customCRDBuilder
-                            .editSpec()
-                            .addNewAdditionalPrinterColumn()
-                            .withName(column.getLeft())
-                            .withType(column.getMiddle())
-                            .withJSONPath(column.getRight())
-                            .endAdditionalPrinterColumn()
-                            .endSpec();
-                });
+                column ->
+                        customCRDBuilder
+                                .editSpec()
+                                .editFirstVersion()
+                                .addNewAdditionalPrinterColumn()
+                                .withName(column.getLeft())
+                                .withType(column.getMiddle())
+                                .withJsonPath(column.getRight())
+                                .endAdditionalPrinterColumn()
+                                .endVersion()
+                                .endSpec());
 
         // setup status
         customCRDBuilder
                 .editOrNewSpec()
+                .editFirstVersion()
+                .editOrNewSchema()
+                .withNewOpenAPIV3Schema()
+                .withType("object")
+                .addToRequired("spec")
+                .addToProperties(
+                        "spec",
+                        new JSONSchemaPropsBuilder()
+                                .withType("object")
+                                .withXKubernetesPreserveUnknownFields(true)
+                                .build())
+                .endOpenAPIV3Schema()
+                .endSchema()
                 .editOrNewSubresources()
                 .withNewStatus()
                 .endStatus()
                 .endSubresources()
+                .endVersion()
                 .endSpec();
 
         return customCRDBuilder.build();

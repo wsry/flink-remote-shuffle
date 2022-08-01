@@ -18,8 +18,8 @@ package com.alibaba.flink.shuffle.kubernetes.operator;
 
 import com.alibaba.flink.shuffle.kubernetes.operator.crd.RemoteShuffleApplication;
 
-import io.fabric8.kubernetes.api.model.apiextensions.v1beta1.CustomResourceColumnDefinition;
-import io.fabric8.kubernetes.api.model.apiextensions.v1beta1.CustomResourceDefinition;
+import io.fabric8.kubernetes.api.model.apiextensions.v1.CustomResourceColumnDefinition;
+import io.fabric8.kubernetes.api.model.apiextensions.v1.CustomResourceDefinition;
 import org.apache.commons.lang3.tuple.Triple;
 import org.junit.Test;
 
@@ -40,7 +40,7 @@ public class RemoteShuffleApplicationOperatorEntrypointTest {
         RemoteShuffleApplication instance = new RemoteShuffleApplication();
 
         assertThat(crd.getKind(), is("CustomResourceDefinition"));
-        assertThat(crd.getApiVersion(), is("apiextensions.k8s.io/v1beta1"));
+        assertThat(crd.getApiVersion(), is("apiextensions.k8s.io/v1"));
         assertThat(crd.getMetadata().getName(), is(instance.getCRDName()));
         assertThat(crd.getSpec().getGroup(), is(instance.getGroup()));
         assertThat(crd.getSpec().getNames().getKind(), is(instance.getKind()));
@@ -48,14 +48,15 @@ public class RemoteShuffleApplicationOperatorEntrypointTest {
         assertThat(crd.getSpec().getNames().getPlural(), is(instance.getPlural()));
         assertThat(crd.getSpec().getScope(), is(instance.getScope()));
 
-        assertThat(crd.getSpec().getAdditionalPrinterColumns().size(), is(2));
+        assertEquals(1, crd.getSpec().getVersions().size());
+        assertThat(crd.getSpec().getVersions().get(0).getAdditionalPrinterColumns().size(), is(2));
 
         List<Triple<String, String, String>> additionalColumns = new ArrayList<>();
         for (CustomResourceColumnDefinition definition :
-                crd.getSpec().getAdditionalPrinterColumns()) {
+                crd.getSpec().getVersions().get(0).getAdditionalPrinterColumns()) {
             additionalColumns.add(
                     Triple.of(
-                            definition.getName(), definition.getType(), definition.getJSONPath()));
+                            definition.getName(), definition.getType(), definition.getJsonPath()));
         }
 
         assertEquals(
