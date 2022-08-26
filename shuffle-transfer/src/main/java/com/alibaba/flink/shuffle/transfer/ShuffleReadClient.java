@@ -33,6 +33,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.ClosedChannelException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 import static com.alibaba.flink.shuffle.common.utils.CommonUtils.checkArgument;
@@ -110,7 +111,7 @@ public class ShuffleReadClient extends CreditListener {
     private Throwable cause;
 
     /** Whether the channel is closed. */
-    private volatile boolean closed;
+    private AtomicBoolean closed;
 
     public ShuffleReadClient(
             InetSocketAddress address,
@@ -148,6 +149,7 @@ public class ShuffleReadClient extends CreditListener {
         this.failureListener = failureListener;
         this.channelID = new ChannelID(randomBytes(16));
         this.channelIDStr = channelID.toString();
+        this.closed = new AtomicBoolean(false);
     }
 
     /** Create Netty connection to remote. */
@@ -197,7 +199,7 @@ public class ShuffleReadClient extends CreditListener {
     /** Called by Netty thread. */
     public void dataReceived(ReadData readData) {
         LOG.trace("(remote: {}, channel: {}) Received {}.", address, channelIDStr, readData);
-        if (closed) {
+        if (closed.get()) {
             readData.getBuffer().release();
             return;
         }
@@ -211,7 +213,7 @@ public class ShuffleReadClient extends CreditListener {
 
     /** Called by Netty thread. */
     public void channelInactive() {
-        if (closed || cause != null) {
+        if (closed.get() || cause != null) {
             return;
         }
         cause =
@@ -261,7 +263,6 @@ public class ShuffleReadClient extends CreditListener {
 
     /** Closes Netty connection -- called from task thread. */
     public void close() throws IOException {
-        closed = true;
         LOG.debug(
                 "(remote: {}, channel: {}) Close for (dataSetID: {}, mapID: {}, startSubIdx: {}, endSubIdx: {}).",
                 address,
@@ -270,12 +271,14 @@ public class ShuffleReadClient extends CreditListener {
                 mapID,
                 startSubIdx,
                 endSubIdx);
-        if (nettyChannel != null) {
-            connectionManager.releaseChannel(address, channelID);
-        }
+        if (closed.compareAndSet(false, true)) {
+            if (nettyChannel != null) {
+                connectionManager.releaseChannel(address, channelID);
+            }
 
-        if (readClientHandler != null) {
-            readClientHandler.unregister(this);
+            if (readClientHandler != null) {
+                readClientHandler.unregister(this);
+            }
         }
     }
 

@@ -334,17 +334,17 @@ public class RemoteShuffleInputGate extends IndexedInputGate {
     public void close() throws Exception {
         List<Buffer> buffersToRecycle;
         Throwable closeException = null;
-        synchronized (lock) {
-            // Do not check closed flag, thus to allow calling this method from both task thread and
-            // cancel thread.
-            for (ShuffleReadClient shuffleReadClient : shuffleReadClients) {
-                try {
-                    shuffleReadClient.close();
-                } catch (Throwable throwable) {
-                    closeException = closeException == null ? throwable : closeException;
-                    LOG.error("Failed to close shuffle read client.", throwable);
-                }
+        // Do not check closed flag, thus to allow calling this method from both task thread and
+        // cancel thread.
+        for (ShuffleReadClient shuffleReadClient : shuffleReadClients) {
+            try {
+                shuffleReadClient.close();
+            } catch (Throwable throwable) {
+                closeException = closeException == null ? throwable : closeException;
+                LOG.error("Failed to close shuffle read client.", throwable);
             }
+        }
+        synchronized (lock) {
             buffersToRecycle =
                     receivedBuffers.stream().map(Pair::getLeft).collect(Collectors.toList());
             receivedBuffers.clear();
